@@ -3,6 +3,8 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use rand::prelude::*;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BitVector<const SIZE: usize>(Vec<bool>);
 
@@ -78,6 +80,49 @@ impl<const N: usize> Display for BitVector<N> {
         }
         Ok(())
     }
+}
+
+pub fn break_one_bit(buf: &mut [bool]) -> usize {
+    debug_assert!(!buf.is_empty(), "break_one_bit on empty buffer");
+    let idx = thread_rng().gen_range(0..buf.len());
+    buf[idx] = !buf[idx];
+    idx
+}
+
+pub fn break_two_bits(buf: &mut [bool]) -> [usize; 2] {
+    debug_assert!(
+        buf.len() > 1,
+        "break_two_bits on empty or single-element buffer"
+    );
+    let mut rng = thread_rng();
+    let idx1 = rng.gen_range(0..buf.len());
+    let idx2 = loop {
+        let item = rng.gen_range(0..buf.len());
+        if item != idx1 {
+            break item;
+        }
+    };
+    buf[idx1] = !buf[idx1];
+    buf[idx2] = !buf[idx2];
+    [idx1, idx2]
+}
+
+pub fn break_n_bits(buf: &mut [bool], n_bits: usize) -> Vec<usize> {
+    debug_assert!(buf.len() >= n_bits);
+    let mut broken = vec![];
+    let mut rng = thread_rng();
+    for _ in 0..n_bits {
+        let this_bit = loop {
+            let item = rng.gen_range(0..buf.len());
+            if !broken.contains(&item) {
+                break item;
+            }
+        };
+
+        buf[this_bit] = !buf[this_bit];
+        broken.push(this_bit);
+    }
+    broken
 }
 
 #[cfg(test)]

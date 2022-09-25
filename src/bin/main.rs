@@ -1,16 +1,15 @@
 use std::borrow::Cow;
 
 use colored::*;
-use encoding::{
-    decode_hamming, encode_hamming, CodeVector, InfoVector, CHECKSUM_POSITION, CHECK_POSITIONS,
-};
 use encoding_rs::WINDOWS_1251;
-use rand::{thread_rng, Rng};
+use hamming::{
+    bits::{break_one_bit, break_two_bits},
+    encoding::{
+        decode_hamming, encode_hamming, CodeVector, InfoVector, CHECKSUM_POSITION, CHECK_POSITIONS,
+    },
+};
 
-use crate::encoding::DecodeResult;
-mod bits;
-mod encoding;
-
+use hamming::encoding::DecodeResult;
 fn display_encoded_vector(vec: &CodeVector) {
     for (position, digit) in vec.iter().cloned().enumerate() {
         if CHECK_POSITIONS.contains(&position) {
@@ -46,31 +45,6 @@ fn from_cp1251(buf: &[u8]) -> Cow<'_, str> {
     WINDOWS_1251.decode(buf).0
 }
 
-fn break_one_bit(buf: &mut [bool]) -> usize {
-    debug_assert!(!buf.is_empty(), "break_one_bit on empty buffer");
-    let idx = thread_rng().gen_range(0..buf.len());
-    buf[idx] = !buf[idx];
-    idx
-}
-
-fn break_two_bits(buf: &mut [bool]) -> [usize; 2] {
-    debug_assert!(
-        buf.len() > 1,
-        "break_two_bits on empty or single-element buffer"
-    );
-    let mut rng = thread_rng();
-    let idx1 = rng.gen_range(0..buf.len());
-    let idx2 = loop {
-        let item = rng.gen_range(0..buf.len());
-        if item != idx1 {
-            break item;
-        }
-    };
-    buf[idx1] = !buf[idx1];
-    buf[idx2] = !buf[idx2];
-    [idx1, idx2]
-}
-
 fn main() {
     let alphabet = ['л', 'м', 'н', 'о', 'п'];
 
@@ -82,7 +56,7 @@ fn main() {
         .map(into_cp1251_bits)
         .collect::<Vec<_>>();
 
-    for (letter, &code) in char_codes.iter().cloned().zip(alphabet.iter()) {
+    for (code, &letter) in char_codes.iter().cloned().zip(alphabet.iter()) {
         println!("{letter} => {code}");
     }
 
@@ -90,7 +64,8 @@ fn main() {
 
     println!("закодированная версия:");
 
-    for item in &encoded {
+    for (item, original) in encoded.iter().zip(char_codes.iter()) {
+        print!("{original} => ");
         display_encoded_vector(item);
     }
 
@@ -109,10 +84,9 @@ fn main() {
     for mut item in encoded.clone() {
         break_one_bit(&mut item);
         match decode_hamming(&item) {
-            encoding::DecodeResult::ErrorFixed(msg, err_idx) => {
-                println!("вектор с ошибкой:");
+            hamming::encoding::DecodeResult::ErrorFixed(msg, err_idx) => {
                 print_with_highlight(&item, &[err_idx]);
-                println!("{}", format!("во время декодирования была обнаружена и исправлена одна ошибка (на позиции {err_idx})").yellow());
+                println!("{}", format!("ошибка в позиции {err_idx}").yellow());
                 let char_buf = [u8::from(&msg)];
                 println!("сообщение: {} ({})", msg, from_cp1251(&char_buf));
             }
