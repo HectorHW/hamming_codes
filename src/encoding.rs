@@ -81,10 +81,17 @@ pub fn decode_hamming(vec: &CodeVector) -> DecodeResult {
         .filter(|&idx| idx != CHECKSUM_POSITION)
         .collect::<Vec<_>>();
 
+    if errors_without_checksum.is_empty() {
+        return DecodeResult::ErrorFixed(
+            extract_info_vector(&original.try_into().unwrap()),
+            CHECKSUM_POSITION,
+        );
+    }
+
     let flip_idx: usize =
         errors_without_checksum.iter().sum::<usize>() + errors_without_checksum.len() - 1;
 
-    if flip_idx >= original.len() {
+    if flip_idx >= CHECKSUM_POSITION {
         return DecodeResult::MultipleErrorsDetected;
     }
 
@@ -162,6 +169,8 @@ mod test {
     #[case('w', 6)]
     #[case('q', 8)]
     #[case('z', 9)]
+    #[case('w', 11)]
+    #[case('w', 12)]
     fn sigle_error_test(#[case] input: char, #[case] offset: usize) {
         let code = convert_ascii(input).unwrap();
 
