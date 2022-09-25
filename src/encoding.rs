@@ -11,13 +11,7 @@ fn compute_checks_inplace(buf: &mut [bool]) {
     buf[1] = buf[2] ^ buf[5] ^ buf[6] ^ buf[9] ^ buf[10];
     buf[3] = buf[4] ^ buf[5] ^ buf[6] ^ buf[11];
     buf[7] = buf[8] ^ buf[9] ^ buf[10] ^ buf[11];
-    buf[12] = {
-        let mut sum = false;
-        for &digit in buf.split_last().unwrap().1 {
-            sum ^= digit;
-        }
-        sum
-    };
+    buf[12] = compute_checksum(&buf[0..buf.len() - 1]);
 }
 
 pub fn encode_hamming(vec: &InfoVector) -> CodeVector {
