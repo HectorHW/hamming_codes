@@ -1,4 +1,7 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BitVector<const SIZE: usize>(Vec<bool>);
@@ -43,23 +46,53 @@ impl<const N: usize> TryFrom<Vec<u8>> for BitVector<N> {
     }
 }
 
-pub fn convert_ascii(value: char) -> Result<BitVector<8>, ()> {
-    if !value.is_ascii() {
-        return Err(());
+impl From<u8> for BitVector<8> {
+    fn from(mut item: u8) -> Self {
+        let mut buf = vec![];
+        for _ in 0..8 {
+            buf.push(item & 128 != 0);
+            item <<= 1;
+        }
+        BitVector(buf)
     }
+}
 
-    let mut byte = value as u8;
-    let mut buf = vec![];
-    for _ in 0..8 {
-        buf.push(byte & 128 != 0);
-        byte <<= 1;
+impl From<&BitVector<8>> for u8 {
+    fn from(val: &BitVector<8>) -> Self {
+        let mut result = 0u8;
+        let mut power = 128;
+        for &bit in &val[..] {
+            if bit {
+                result += power;
+            }
+            power >>= 1;
+        }
+        result
     }
-    Ok(BitVector(buf))
+}
+
+impl<const N: usize> Display for BitVector<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for &item in &self[..] {
+            write!(f, "{}", item as u8)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
-mod test {
-    use super::convert_ascii;
+pub mod test {
+    use super::BitVector;
+
+    pub fn convert_ascii(value: char) -> Result<BitVector<8>, ()> {
+        if !value.is_ascii() {
+            return Err(());
+        }
+
+        let byte = value as u8;
+
+        Ok(BitVector::from(byte))
+    }
 
     #[test]
     fn convert_w() {

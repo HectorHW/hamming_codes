@@ -104,7 +104,7 @@ pub fn decode_hamming(vec: &CodeVector) -> DecodeResult {
 #[cfg(test)]
 mod test {
 
-    use crate::bits::convert_ascii;
+    use crate::bits::test::convert_ascii;
 
     use super::{decode_hamming, encode_hamming, DecodeResult};
     #[test]
